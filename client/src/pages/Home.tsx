@@ -1,18 +1,20 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { useNotes, useDeleteNote } from "@/hooks/use-notes";
 import { GraphView } from "@/components/GraphView";
-import { CreateNoteDialog } from "@/components/CreateNoteDialog";
 import { NoteCard } from "@/components/NoteCard";
+import { RichTextEditor } from "@/components/RichTextEditor";
 import { Note } from "@shared/schema";
 import { format } from "date-fns";
-import { Search, Loader2, Leaf, Network, PanelRightClose, PanelRightOpen, Sun, Moon } from "lucide-react";
+import { Search, Loader2, Leaf, Network, PanelRightClose, PanelRightOpen, Sun, Moon, Edit2, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { AnimatePresence, motion } from "framer-motion";
 
 export default function Home() {
+  const [, setLocation] = useLocation();
   const { data: notes, isLoading } = useNotes();
   const deleteNote = useDeleteNote();
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
@@ -100,7 +102,14 @@ export default function Home() {
                 />
               </div>
 
-              <CreateNoteDialog />
+              <Button 
+                size="lg" 
+                className="w-full shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all duration-300"
+                onClick={() => setLocation("/notes/new")}
+              >
+                <Plus className="w-5 h-5 mr-2" />
+                Plant Idea
+              </Button>
             </div>
 
             <ScrollArea className="flex-1 p-4">
@@ -153,13 +162,30 @@ export default function Home() {
         </div>
 
         {/* Details Sheet Overlay */}
-        <Sheet open={!!selectedNote} onOpenChange={(open) => !open && setSelectedNote(null)}>
-          <SheetContent className="sm:max-w-md md:max-w-lg overflow-y-auto">
+        <Sheet open={!!selectedNote} onOpenChange={(open) => {
+          if (!open) {
+            setSelectedNote(null);
+          }
+        }}>
+          <SheetContent className="sm:max-w-md md:max-w-2xl overflow-y-auto">
             <SheetHeader className="mb-6 space-y-4">
               <div className="flex items-start justify-between">
                 <SheetTitle className="text-3xl font-display font-bold leading-tight text-primary">
                   {selectedNote?.title}
                 </SheetTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (selectedNote) {
+                      setLocation(`/notes/${selectedNote.id}/edit`);
+                    }
+                  }}
+                  className="ml-4"
+                >
+                  <Edit2 className="w-4 h-4 mr-2" />
+                  Edit
+                </Button>
               </div>
               <div className="flex gap-2 text-sm text-muted-foreground font-mono items-center">
                 <span>Created {selectedNote?.createdAt && format(new Date(selectedNote.createdAt), 'PPP p')}</span>
@@ -174,9 +200,12 @@ export default function Home() {
             </SheetHeader>
             
             <div className="prose prose-sm dark:prose-invert max-w-none">
-              <p className="whitespace-pre-wrap leading-relaxed text-foreground/90 text-base">
-                {selectedNote?.content}
-              </p>
+              <RichTextEditor
+                content={selectedNote?.content || ''}
+                onChange={() => {}}
+                editable={false}
+                className="min-h-[200px]"
+              />
             </div>
 
             {/* Related Notes Section */}

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertNoteSchema, notes } from './schema';
+import { insertNoteSchema, updateNoteSchema, notes } from './schema';
 
 export const api = {
   notes: {
@@ -24,6 +24,16 @@ export const api = {
       path: '/api/notes/:id',
       responses: {
         200: z.custom<typeof notes.$inferSelect>(),
+        404: z.object({ message: z.string() }),
+      },
+    },
+    update: {
+      method: 'PUT' as const,
+      path: '/api/notes/:id',
+      input: updateNoteSchema,
+      responses: {
+        200: z.custom<typeof notes.$inferSelect>(),
+        400: z.object({ message: z.string() }),
         404: z.object({ message: z.string() }),
       },
     },

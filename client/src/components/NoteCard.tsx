@@ -11,7 +11,14 @@ interface NoteCardProps {
   onDelete: (e: React.MouseEvent) => void;
 }
 
+function stripHtmlTags(html: string): string {
+  const tmp = document.createElement('DIV');
+  tmp.innerHTML = html;
+  return tmp.textContent || tmp.innerText || '';
+}
+
 export function NoteCard({ note, isActive, onClick, onDelete }: NoteCardProps) {
+  const plainTextContent = stripHtmlTags(note.content);
   return (
     <div
       onClick={onClick}
@@ -33,7 +40,7 @@ export function NoteCard({ note, isActive, onClick, onDelete }: NoteCardProps) {
       </div>
       
       <p className="text-sm text-muted-foreground line-clamp-2 mb-4 leading-relaxed">
-        {note.content}
+        {plainTextContent}
       </p>
 
       <div className="flex flex-wrap gap-2 items-center">

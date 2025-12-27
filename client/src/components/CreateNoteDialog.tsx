@@ -14,9 +14,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Loader2, Plus } from "lucide-react";
+import { RichTextEditor } from "@/components/RichTextEditor";
 
 export function CreateNoteDialog() {
   const [open, setOpen] = useState(false);
@@ -47,7 +47,7 @@ export function CreateNoteDialog() {
           Plant Idea
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px] bg-background/95 backdrop-blur-xl border-primary/20">
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto bg-background/95 backdrop-blur-xl border-primary/20">
         <DialogHeader>
           <DialogTitle className="text-2xl font-display font-bold text-primary">New Sprout</DialogTitle>
           <DialogDescription>
@@ -77,10 +77,11 @@ export function CreateNoteDialog() {
                 <FormItem>
                   <FormLabel>Content</FormLabel>
                   <FormControl>
-                    <Textarea 
-                      placeholder="The process by which plants convert light energy..." 
-                      className="min-h-[150px] bg-muted/50 border-transparent focus:border-primary/50 transition-all resize-none" 
-                      {...field} 
+                    <RichTextEditor
+                      content={field.value || ''}
+                      onChange={field.onChange}
+                      placeholder="The process by which plants convert light energy..."
+                      editable={true}
                     />
                   </FormControl>
                   <FormMessage />

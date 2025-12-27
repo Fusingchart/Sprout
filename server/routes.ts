@@ -12,18 +12,35 @@ const openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL
 });
 
+function stripHtmlTags(html: string): string {
+  // Remove HTML tags and decode entities
+  return html
+    .replace(/<[^>]*>/g, ' ') // Remove HTML tags
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ') // Normalize whitespace
+    .trim();
+}
+
 async function extractKeywords(text: string): Promise<string[]> {
   try {
+    // Strip HTML tags if present
+    const cleanText = stripHtmlTags(text);
+    
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
-          content: "You are a keyword extraction tool. Extract 3-5 main keywords or concepts from the text. Return ONLY a JSON array of strings, e.g. [\"keyword1\", \"keyword2\"]. Do not include markdown formatting or explanation."
+          content: "You are a keyword extraction tool. Extract 3-5 main keywords or concepts from the text. Return ONLY a JSON object with a 'keywords' array of strings, e.g. {\"keywords\": [\"keyword1\", \"keyword2\"]}. Do not include markdown formatting or explanation."
         },
         {
           role: "user",
-          content: text
+          content: cleanText
         }
       ],
       response_format: { type: "json_object" }
@@ -70,6 +87,37 @@ export async function registerRoutes(
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
+      }
+      console.error(err);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  });
+
+  app.put(api.notes.update.path, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const input = api.notes.update.input.parse(req.body);
+      
+      // Extract keywords using AI if content or title changed
+      if (input.title || input.content) {
+        const existingNote = await storage.getNote(id);
+        if (!existingNote) {
+          return res.status(404).json({ message: 'Note not found' });
+        }
+        
+        const textToAnalyze = `${input.title || existingNote.title}\n${input.content || existingNote.content}`;
+        const keywords = await extractKeywords(textToAnalyze);
+        // Note: We don't update keywords on edit, but we could if needed
+      }
+      
+      const note = await storage.updateNote(id, input);
+      res.json(note);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      if (err instanceof Error && err.message === 'Note not found') {
+        return res.status(404).json({ message: err.message });
       }
       console.error(err);
       res.status(500).json({ message: "Internal Server Error" });

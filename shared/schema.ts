@@ -16,5 +16,12 @@ export const insertNoteSchema = createInsertSchema(notes).omit({
   keywords: true // Keywords are generated server-side
 });
 
+export const updateNoteSchema = createInsertSchema(notes).omit({
+  id: true,
+  createdAt: true,
+  keywords: true // Keywords are generated server-side
+}).partial();
+
 export type Note = typeof notes.$inferSelect;
 export type InsertNote = z.infer<typeof insertNoteSchema>;
+export type UpdateNote = z.infer<typeof updateNoteSchema>;
