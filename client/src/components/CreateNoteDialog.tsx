@@ -80,7 +80,7 @@ export function CreateNoteDialog() {
                     <RichTextEditor
                       content={field.value || ''}
                       onChange={field.onChange}
-                      placeholder="The process by which plants convert light energy..."
+                      placeholder="The process by which plants convert light energy..." 
                       editable={true}
                     />
                   </FormControl>

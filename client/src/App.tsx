@@ -7,10 +7,12 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import NoteCreate from "@/pages/NoteCreate";
 import NoteEditor from "@/pages/NoteEditor";
+import Login from "@/pages/Login";
 
 function Router() {
   return (
     <Switch>
+      <Route path="/login" component={Login} />
       <Route path="/" component={Home} />
       <Route path="/notes/new" component={NoteCreate} />
       <Route path="/notes/:id/edit" component={NoteEditor} />

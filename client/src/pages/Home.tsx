@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useNotes, useDeleteNote } from "@/hooks/use-notes";
+import { useAuth } from "@/hooks/use-auth";
 import { GraphView } from "@/components/GraphView";
 import { NoteCard } from "@/components/NoteCard";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { Note } from "@shared/schema";
 import { format } from "date-fns";
-import { Search, Loader2, Leaf, Network, PanelRightClose, PanelRightOpen, Sun, Moon, Edit2, Plus } from "lucide-react";
+import { Search, Loader2, Leaf, Network, PanelRightClose, PanelRightOpen, Sun, Moon, Edit2, Plus, LogOut } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -15,12 +16,20 @@ import { AnimatePresence, motion } from "framer-motion";
 
 export default function Home() {
   const [, setLocation] = useLocation();
+  const { user, isLoading: authLoading } = useAuth();
   const { data: notes, isLoading } = useNotes();
   const deleteNote = useDeleteNote();
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [search, setSearch] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      setLocation("/login");
+    }
+  }, [user, authLoading, setLocation]);
 
   // Toggle theme
   useEffect(() => {
@@ -54,7 +63,7 @@ export default function Home() {
     }
   };
 
-  if (isLoading) {
+  if (authLoading || isLoading || !user) {
     return (
       <div className="h-screen w-full flex flex-col items-center justify-center bg-background gap-4">
         <div className="relative">
@@ -89,6 +98,17 @@ export default function Home() {
                   <Button variant="ghost" size="icon" onClick={toggleTheme}>
                     {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                   </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={async () => {
+                      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+                      setLocation("/login");
+                    }}
+                    title="Logout"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </Button>
                 </div>
               </div>
 
@@ -103,9 +123,14 @@ export default function Home() {
               </div>
 
               <Button 
+                type="button"
                 size="lg" 
                 className="w-full shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all duration-300"
-                onClick={() => setLocation("/notes/new")}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setLocation("/notes/new");
+                }}
               >
                 <Plus className="w-5 h-5 mr-2" />
                 Plant Idea

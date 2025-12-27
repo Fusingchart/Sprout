@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { useLocation, useRoute } from "wouter";
+import { useLocation, useRoute, Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { updateNoteSchema, type UpdateNote } from "@shared/schema";
 import { useNote, useUpdateNote } from "@/hooks/use-notes";
+import { useAuth } from "@/hooks/use-auth";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,11 +14,18 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function NoteEditor() {
   const [, setLocation] = useLocation();
+  const { user, isLoading: authLoading } = useAuth();
   const [, params] = useRoute("/notes/:id/edit");
   const noteId = params ? Number(params.id) : null;
   const { data: note, isLoading } = useNote(noteId);
   const updateNote = useUpdateNote();
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      setLocation("/login");
+    }
+  }, [user, authLoading, setLocation]);
 
   const form = useForm<UpdateNote>({
     resolver: zodResolver(updateNoteSchema),
@@ -48,7 +56,7 @@ export default function NoteEditor() {
     );
   };
 
-  if (isLoading) {
+  if (authLoading || isLoading || !user) {
     return (
       <div className="h-screen w-full flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -69,17 +77,39 @@ export default function NoteEditor() {
     <div className="h-screen w-full flex flex-col bg-background">
       {/* Header */}
       <div className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setLocation("/")}
+        <div className="flex items-center gap-4" style={{ position: "relative", zIndex: 1000 }}>
+          <a
+            href="/"
+            onClick={(e) => {
+              e.preventDefault();
+              console.log("Back link clicked");
+              setLocation("/");
+            }}
+            style={{ 
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "2.25rem",
+              width: "2.25rem",
+              borderRadius: "0.375rem",
+              border: "1px solid transparent",
+              cursor: "pointer",
+              textDecoration: "none",
+              color: "inherit"
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "hsl(var(--accent))";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "transparent";
+            }}
           >
             <ArrowLeft className="w-5 h-5" />
-          </Button>
+          </a>
           <h1 className="text-xl font-display font-semibold">Edit Note</h1>
         </div>
         <Button
+          type="button"
           onClick={form.handleSubmit(onSubmit)}
           disabled={updateNote.isPending}
           className="gap-2"

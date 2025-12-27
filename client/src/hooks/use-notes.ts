@@ -9,7 +9,9 @@ export function useNotes() {
   return useQuery({
     queryKey: [api.notes.list.path],
     queryFn: async () => {
-      const res = await fetch(api.notes.list.path);
+      const res = await fetch(api.notes.list.path, {
+        credentials: "include",
+      });
       if (!res.ok) {
         toast({
           variant: "destructive",
@@ -30,7 +32,9 @@ export function useNote(id: number | null) {
     queryFn: async () => {
       if (!id) return null;
       const url = buildUrl(api.notes.get.path, { id });
-      const res = await fetch(url);
+      const res = await fetch(url, {
+        credentials: "include",
+      });
       if (!res.ok) throw new Error("Failed to fetch note");
       return api.notes.get.responses[200].parse(await res.json());
     },
@@ -47,11 +51,13 @@ export function useCreateNote() {
       const res = await fetch(api.notes.create.path, {
         method: api.notes.create.method,
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(validated),
       });
       
       if (!res.ok) {
         const error = await res.json();
+        console.error("API Error:", error);
         throw new Error(error.message || "Failed to create note");
       }
       return api.notes.create.responses[201].parse(await res.json());
@@ -84,6 +90,7 @@ export function useUpdateNote() {
       const res = await fetch(url, {
         method: api.notes.update.method,
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(validated),
       });
       
@@ -118,7 +125,10 @@ export function useDeleteNote() {
   return useMutation({
     mutationFn: async (id: number) => {
       const url = buildUrl(api.notes.delete.path, { id });
-      const res = await fetch(url, { method: api.notes.delete.method });
+      const res = await fetch(url, {
+        method: api.notes.delete.method,
+        credentials: "include",
+      });
       if (!res.ok) throw new Error("Failed to delete note");
     },
     onSuccess: () => {

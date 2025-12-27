@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertNoteSchema, type InsertNote } from "@shared/schema";
 import { useCreateNote } from "@/hooks/use-notes";
+import { useAuth } from "@/hooks/use-auth";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,7 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 
 export default function NoteCreate() {
   const [, setLocation] = useLocation();
+  const { user, isLoading: authLoading } = useAuth();
   const createNote = useCreateNote();
 
   const form = useForm<InsertNote>({
@@ -22,30 +24,89 @@ export default function NoteCreate() {
     },
   });
 
+  useEffect(() => {
+    if (!authLoading && !user) {
+      setLocation("/login");
+    }
+  }, [user, authLoading, setLocation]);
+
+  if (authLoading || !user) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   const onSubmit = (data: InsertNote) => {
+    console.log("Form submitted with data:", data);
     createNote.mutate(data, {
       onSuccess: () => {
+        console.log("Note created successfully, navigating home");
         setLocation("/");
       },
+      onError: (error) => {
+        console.error("Error creating note:", error);
+      },
     });
+  };
+
+  const handleCreateClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log("Create Note button clicked");
+    console.log("Form state:", form.getValues());
+    console.log("Form errors:", form.formState.errors);
+    const result = form.handleSubmit(
+      (data) => {
+        console.log("Form validation passed, submitting:", data);
+        onSubmit(data);
+      },
+      (errors) => {
+        console.log("Form validation failed:", errors);
+      }
+    );
+    result(e);
   };
 
   return (
     <div className="h-screen w-full flex flex-col bg-background">
       {/* Header */}
       <div className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setLocation("/")}
+        <div className="flex items-center gap-4" style={{ position: "relative", zIndex: 1000 }}>
+          <a
+            href="/"
+            onClick={(e) => {
+              e.preventDefault();
+              console.log("Back link clicked");
+              setLocation("/");
+            }}
+            style={{ 
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "2.25rem",
+              width: "2.25rem",
+              borderRadius: "0.375rem",
+              border: "1px solid transparent",
+              cursor: "pointer",
+              textDecoration: "none",
+              color: "inherit"
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "hsl(var(--accent))";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "transparent";
+            }}
           >
             <ArrowLeft className="w-5 h-5" />
-          </Button>
+          </a>
           <h1 className="text-xl font-display font-semibold">New Note</h1>
         </div>
         <Button
-          onClick={form.handleSubmit(onSubmit)}
+          type="submit"
+          onClick={handleCreateClick}
           disabled={createNote.isPending}
           className="gap-2"
         >
@@ -63,7 +124,14 @@ export default function NoteCreate() {
       {/* Editor Content */}
       <div className="flex-1 overflow-y-auto p-6">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 max-w-4xl mx-auto">
+          <form 
+            onSubmit={(e) => {
+              e.preventDefault();
+              console.log("Form onSubmit triggered");
+              form.handleSubmit(onSubmit)(e);
+            }} 
+            className="space-y-6 max-w-4xl mx-auto"
+          >
             <FormField
               control={form.control}
               name="title"

@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import OpenAI from "openai";
+import { requireAuth } from "./auth";
 
 // Initialize OpenAI client - Replit AI integration provides the API key automatically
 // if configured, or uses the environment variable if manually set.
@@ -61,46 +62,52 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  app.get(api.notes.list.path, async (req, res) => {
-    const notes = await storage.getNotes();
+  // All note routes require authentication
+  app.get(api.notes.list.path, requireAuth, async (req: any, res) => {
+    const userId = (req.user as any).id;
+    const notes = await storage.getNotes(userId);
     res.json(notes);
   });
 
-  app.get(api.notes.get.path, async (req, res) => {
-    const note = await storage.getNote(Number(req.params.id));
+  app.get(api.notes.get.path, requireAuth, async (req: any, res) => {
+    const userId = (req.user as any).id;
+    const note = await storage.getNote(Number(req.params.id), userId);
     if (!note) {
       return res.status(404).json({ message: 'Note not found' });
     }
     res.json(note);
   });
 
-  app.post(api.notes.create.path, async (req, res) => {
+  app.post(api.notes.create.path, requireAuth, async (req: any, res) => {
     try {
+      const userId = (req.user as any).id;
       const input = api.notes.create.input.parse(req.body);
       
       // Extract keywords using AI
       const textToAnalyze = `${input.title}\n${input.content}`;
       const keywords = await extractKeywords(textToAnalyze);
       
-      const note = await storage.createNote({ ...input, keywords });
+      const note = await storage.createNote({ ...input, keywords, userId });
       res.status(201).json(note);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.errors[0].message });
+        console.error("Validation error:", err.errors);
+        return res.status(400).json({ message: err.errors[0].message, errors: err.errors });
       }
-      console.error(err);
+      console.error("Server error:", err);
       res.status(500).json({ message: "Internal Server Error" });
     }
   });
 
-  app.put(api.notes.update.path, async (req, res) => {
+  app.put(api.notes.update.path, requireAuth, async (req: any, res) => {
     try {
+      const userId = (req.user as any).id;
       const id = Number(req.params.id);
       const input = api.notes.update.input.parse(req.body);
       
       // Extract keywords using AI if content or title changed
       if (input.title || input.content) {
-        const existingNote = await storage.getNote(id);
+        const existingNote = await storage.getNote(id, userId);
         if (!existingNote) {
           return res.status(404).json({ message: 'Note not found' });
         }
@@ -110,7 +117,7 @@ export async function registerRoutes(
         // Note: We don't update keywords on edit, but we could if needed
       }
       
-      const note = await storage.updateNote(id, input);
+      const note = await storage.updateNote(id, input, userId);
       res.json(note);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -124,31 +131,12 @@ export async function registerRoutes(
     }
   });
 
-  app.delete(api.notes.delete.path, async (req, res) => {
+  app.delete(api.notes.delete.path, requireAuth, async (req: any, res) => {
+    const userId = (req.user as any).id;
     const id = Number(req.params.id);
-    await storage.deleteNote(id);
+    await storage.deleteNote(id, userId);
     res.status(204).send();
   });
-
-  // Seed data if empty
-  const existing = await storage.getNotes();
-  if (existing.length === 0) {
-    await storage.createNote({
-      title: "Welcome to Sprout",
-      content: "This is a note-taking app that connects your ideas automatically.",
-      keywords: ["sprout", "note-taking", "ideas"]
-    });
-    await storage.createNote({
-      title: "Project Ideas",
-      content: "1. A gardening app\n2. A recipe organizer\n3. Sprout: An app for connecting ideas.",
-      keywords: ["project", "ideas", "sprout", "app"]
-    });
-     await storage.createNote({
-      title: "Gardening Tips",
-      content: "Sprouts need water and sunlight. Gardening is relaxing.",
-      keywords: ["gardening", "sprouts", "water", "sunlight"]
-    });
-  }
 
   return httpServer;
 }
